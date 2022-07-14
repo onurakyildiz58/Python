@@ -1,5 +1,11 @@
-import builtins
+from pygame import mixer
 import turtle
+
+mixer.init()
+mixer.music.load("batman1.mp3")
+mixer.music.set_volume(0.5)
+mixer.music.play()
+
 
 bat = turtle.Turtle()
 bat.turtlesize(1, 1, 1)
@@ -62,4 +68,5 @@ bat.circle(50, 85)
 
 bat.end_fill()
 turtle.done()
+
 

@@ -2,7 +2,7 @@ import pyautogui as py
 import time
 
 limit = input("limit: ")
-message = "naber müdür"
+message = "kral iyi ki varsın"
 i = 0
 
 time.sleep(5)

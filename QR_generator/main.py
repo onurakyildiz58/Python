@@ -1,5 +1,5 @@
 import qrcode
 
-code = qrcode.make('https://www.youtube.com/shorts/0PgEIhXDMqY')
+code = qrcode.make('https://github.com/onurakyildiz58/Arduino-IoT-/tree/main/Proje%20B')
 
 code.save('qrcode.png')

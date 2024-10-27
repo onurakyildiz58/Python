@@ -1,100 +1,104 @@
-import primary as pri
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
 import os
-import dev
+import requests
+from datetime import datetime, timedelta
 
-inipath = "base.ini"
-imgpath = "rose.png"
-currdir = os.path.dirname(__file__)
+# Replace these with your actual login credentials
+username = '***'
+password = '***'
 
-coasty_image = pri.CoasterImg(imgpath, inipath)
+# URL of the login page
+url = 'https://bulut.e-kres.com.tr/Veli/VeliGirisSayfasi#tab-1'
 
-#Step 1 : Open the image
-coasty_image.f1_openimg()
-# dev.d1_show(coasty_image.og_img_matrix)
+# Path to your ChromeDriver (if not in PATH)
+driver = webdriver.Chrome()  # Make sure the ChromeDriver is in your PATH or provide the path to the ChromeDriver
 
-# #Step 2 : Add A Square Border
-coasty_image.f2_addsquareborder()
-# dev.d1_show(coasty_image.sq_img)
+image_dir = 'images'
+os.makedirs(image_dir, exist_ok=True)
 
-# #Step 3 : Create a Binary Image
-coasty_image.f3_findcutoff(103)
-# coasty_image.f3_findcutoff()
-coasty_image.f4_performcutoff()
-# dev.d1_show(coasty_image.binary_img)
+def fotoIndir(new_date):
+    # Wait for the page to load after the date change
+    time.sleep(5)  # Adjust this as needed
 
-#Step 4: Find and mark the edges around the binary image
-coasty_image.f5_markboundaries()
-# dev.d1_show(coasty_image.boundaryimg)
+    # Find the "Fotoğraflar" tab and click on it
+    foto_tab = driver.find_element(By.ID, 'Li_VeliFotograflar')
+    foto_tab.click()
 
-# # # Step 5: Generate a list of points for the boundary
-coasty_edges = pri.Edges(coasty_image.boundaryimg)
+    # Wait for the page to load after clicking on the tab
+    time.sleep(5)  # Adjust this as needed
+    
+    # Find the image gallery
+    image_gallery = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "image-gallery-1"))
+    )
 
-# # # Step 6: Place the Outer Boundary Circle
-coasty_edges.f7_placeoutercircle()
-coasty_edges.f8_genoutercircle()
+    # Find all images within the container
+    images = image_gallery.find_elements(By.CLASS_NAME, 'gallery-items')
 
-# # # Step 7: Refine Edge points
-# # #7.1 Scale to 90
-# dev.d2p5_scat_all(coasty_edges.edges)
-coasty_edges.f12_scale_to_90()
-# dev.d2p5_scat_all(coasty_edges.edges)
+    # Extract and download the images
+    for idx, img in enumerate(images):
+        img_url = img.get_attribute('src')
+        if img_url:
+            # Download the image using requests
+            response = requests.get(img_url)
+            if response.status_code == 200:
+                # Save the image to 'images' directory with a specific filename
+                img_name = f'{int(new_date.replace(".", ""))}_{idx}.jpg'
+                img_path = os.path.join(image_dir, img_name)
+                with open(img_path, 'wb') as f:
+                    f.write(response.content)
+                    print(f'Downloaded {img_name} to {image_dir}')
 
-# #7.2 Perform Linear Smoothing
-# dev.d2p5_scat_all(coasty_edges.edges)
-coasty_edges.f13_linearsmoothing()
-# dev.d2p5_scat_all(coasty_edges.edges)
+try:
+    # Open the URL
+    driver.get(url)
 
-# #7.3 Remove Points that are too close together
-# dev.d2p5_scat_all(coasty_edges.edges)
-coasty_edges.f17_remove_tooclose()
-# dev.d2p5_scat_all(coasty_edges.edges)
+    # Wait for the login form to be present
+    login_form = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "login-form"))
+    )
 
-# #7.4 Remove Points that are redundant
-# coasty_edges.f9_refine_edgepoints()
+    # Find the username and password input fields
+    username_input = driver.find_element(By.NAME, 'UserName')
+    password_input = driver.find_element(By.NAME, 'Password')
 
-# #Consider - > adding a random tiny adjustment to every edge to avoid bug with floating point nums
+    # Enter the username and password with a delay
+    time.sleep(2)  # Delay to mimic human behavior
+    username_input.send_keys(username)
 
-#8 Generate a Hierarchy of edges
-coasty_edges.f10_hierarchy_build()
-coasty_edges.f11_levelidentities()
+    time.sleep(2)  # Delay to mimic human behavior
+    password_input.send_keys(password)
 
-#9 Group up all of our edges that are apart of the same continuous shape
-coasty_edges.f14_generate_groupings()
-# print(coasty_edges.groupings)
+    # Submit the login form
+    login_button = driver.find_element(By.CSS_SELECTOR, 'input[type="submit"]')
+    time.sleep(2)  # Delay to mimic human behavior
+    login_button.click()
 
-#10 Build Triangles
-coasty_triangles = pri.Triangles(coasty_edges.groupings,coasty_edges.hierarchy)
+    # Wait for the next page to load
+    time.sleep(5)  # Adjust this as needed to wait for the next page
 
-# #10.1 Build the Base of the Coaster
-coasty_triangles.f20_generate_base()
+    # Change the date using the date picker
+    date_picker = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, 'VeliGirisTarihhh'))
+    )
 
-# #10.2 Build the Outer Walls of the Coaster
-coasty_triangles.f19_generate_outer_wall()
-plotlist=[]
-plotlist.append(coasty_triangles.outer_wall)
-dev.d7_plot_3dtriangles(plotlist)
+    dates = ['26.06.2024', '27.06.2024', '28.06.2024']
+    
+    for new_date in dates:
+        # Change the date using the date picker
+        date_picker = driver.find_element(By.ID, 'VeliGirisTarihhh')
+        date_picker.clear()
+        date_picker.send_keys(new_date)
+        date_picker.send_keys(Keys.RETURN)  
 
-# #10.3 Build the Valleys
-coasty_triangles.f21_generate_flatty("valley")
+        # Download images and videos
+        fotoIndir(new_date)
 
-# # #10.4 Build the Walls of the Basins of the Coaster
-coasty_triangles.f23_generate_interior_walls()
-plotlist=[]
-plotlist.append(coasty_triangles.inner_walls)
-dev.d7_plot_3dtriangles(plotlist)
-
-# # #10.5 Build the Face of the Coaster
-coasty_triangles.f21_generate_flatty("plateau")
-
-# #11 Build the STL File
-# #11.1 Organize the Triangles:
-coasty_triangles.f40_arrange_triangles()
-# # print(coasty_triangles.total_triangle_list)
-# # print(len(coasty_triangles.total_triangle_list))
-# # plotlist=[]
-# # plotlist.append(coasty_triangles.total_triangle_list)
-# # dev.d7_plot_3dtriangles(coasty_triangles.total_triangle_list)
-
-# #11.2 Save the file:
-imgpath_full=currdir+"\\"+imgpath[:-4]+".stl"
-coasty_triangles.f23_write_triangles_to_stl(imgpath_full)
+finally:
+    # Close the driver
+    driver.quit()
